@@ -1,0 +1,141 @@
+.sidebar {
+  width: 280px;
+  height: 100vh;
+  background-color: #2c3e50;
+  color: white;
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-header {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid #34495e;
+  background-color: #1a252f;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sidebar-nav {
+  padding: 1rem 0;
+  height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-group {
+  margin-bottom: 0.5rem;
+}
+
+.group-header {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #34495e;
+  transition: background-color 0.2s;
+}
+
+.group-header:hover {
+  background-color: #3a5169;
+}
+
+.group-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.chevron {
+  font-size: 0.7rem;
+  transition: transform 0.2s;
+}
+
+.chevron.expanded {
+  transform: rotate(180deg);
+}
+
+.menu-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background-color: #2c3e50;
+}
+
+.menu-items li {
+  margin: 0;
+}
+
+.menu-item {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2rem;
+  background: none;
+  border: none;
+  color: #bdc3c7;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.menu-item:hover {
+  background-color: #34495e;
+  color: white;
+  padding-left: 2.5rem;
+}
+
+.menu-item.active {
+  background-color: #3498db;
+  color: white;
+  font-weight: 500;
+}
+
+.menu-item.active:hover {
+  background-color: #2980b9;
+  padding-left: 2rem;
+}
+
+.menu-icon {
+  font-size: 1rem;
+  width: 20px;
+  text-align: center;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1rem;
+  border-top: 1px solid #34495e;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #e74c3c;
+  border: none;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background-color: #c0392b;
+}
