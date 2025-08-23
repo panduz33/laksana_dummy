@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = 'your-secret-key-here';
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://laksana-dummy.vercel.app',
   credentials: true
 }));
 app.use(express.json());
