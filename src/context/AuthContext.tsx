@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token && userData) {
         try {
           // Verify the session is still valid using dedicated auth status endpoint
-          const response = await fetch('http://localhost:5000/api/auth/status', {
+          const response = await fetch('https://laksana-dummy.vercel.app/api/auth/status', {
             credentials: 'include'
           });
           
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('http://localhost:5000/api/login', {
+      const response = await fetch('https://laksana-dummy.vercel.app/api/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
