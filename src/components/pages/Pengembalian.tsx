@@ -98,7 +98,7 @@ const Pengembalian: React.FC = () => {
 
     setSubmittingReturn(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/peminjaman/${selectedLoan.id}/return`, {
+      const response = await fetch(API_ENDPOINTS.peminjamanReturn(selectedLoan.id), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

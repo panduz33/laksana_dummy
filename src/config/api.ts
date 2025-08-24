@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
   authStatus: `${API_BASE_URL}/api/auth/status`,
   komoditas: `${API_BASE_URL}/api/komoditas`,
   peminjaman: `${API_BASE_URL}/api/peminjaman`,
+  peminjamanReturn: (id: number) => `${API_BASE_URL}/api/peminjaman/${id}/return`,
   deviceLoans: `${API_BASE_URL}/api/device-loans`,
 };
 
