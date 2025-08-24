@@ -41,6 +41,7 @@ const Peminjaman: React.FC = () => {
   const [komoditasOptions, setKomoditasOptions] = useState<KomoditasOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
 
   // Fetch komoditas options
   useEffect(() => {
@@ -142,6 +143,14 @@ const Peminjaman: React.FC = () => {
       return;
     }
 
+    // Show confirmation dialog
+    setShowConfirmationDialog(true);
+  };
+
+  const handleConfirmedSubmit = async () => {
+    setLoading(true);
+    setShowConfirmationDialog(false);
+
     try {
       const response = await fetch(API_ENDPOINTS.peminjaman, {
         method: 'POST',
@@ -164,12 +173,17 @@ const Peminjaman: React.FC = () => {
           namaOperator: user?.username || ''
         });
       } else {
-        setMessage('Failed to submit loan request. Please try again.');
+        const errorData = await response.json();
+        setMessage(`Error: ${errorData.error || 'Failed to submit loan request'}`);
       }
     } catch (error) {
       setMessage('An error occurred. Please try again.');
     }
     setLoading(false);
+  };
+
+  const handleCancelConfirmation = () => {
+    setShowConfirmationDialog(false);
   };
 
   return (
@@ -358,6 +372,89 @@ const Peminjaman: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmationDialog && (
+        <div className="confirmation-overlay">
+          <div className="confirmation-modal">
+            <div className="confirmation-header">
+              <h3>Konfirmasi Pengajuan Peminjaman</h3>
+            </div>
+            
+            <div className="confirmation-body">
+              <p className="confirmation-intro">
+                Mohon periksa kembali data peminjaman berikut:
+              </p>
+              
+              <div className="confirmation-section">
+                <h4>Informasi Peminjaman</h4>
+                <div className="confirmation-row">
+                  <span className="label">Nama Peminjam:</span>
+                  <span className="value">{formData.namaPeminjam}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Tanggal Peminjaman:</span>
+                  <span className="value">{formData.tanggalPeminjaman}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Nama Program:</span>
+                  <span className="value">{formData.namaProgram}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Rencana Pengembalian:</span>
+                  <span className="value">{formData.rencanaPengembalian}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Nama Operator:</span>
+                  <span className="value">{formData.namaOperator}</span>
+                </div>
+              </div>
+
+              <div className="confirmation-section">
+                <h4>Alat yang Dipinjam</h4>
+                {formData.alatYangDipinjam.map((device, index) => (
+                  <div key={device.id} className="device-summary">
+                    <div className="device-header">
+                      <strong>Alat {index + 1}</strong>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Kategori:</span>
+                      <span className="value">{device.kategoriAlat}</span>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Nama Alat:</span>
+                      <span className="value">{device.namaAlat}</span>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Jumlah:</span>
+                      <span className="value">{device.jumlah} unit</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="confirmation-footer">
+              <button 
+                type="button" 
+                onClick={handleCancelConfirmation}
+                className="cancel-button"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleConfirmedSubmit}
+                className="confirm-button"
+                disabled={loading}
+              >
+                {loading ? 'Mengirim...' : 'OK - Submit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
