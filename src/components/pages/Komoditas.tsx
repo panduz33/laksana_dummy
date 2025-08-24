@@ -18,6 +18,12 @@ interface NewKomoditasForm {
   quantity: number;
 }
 
+interface NewItemState {
+  form: NewKomoditasForm;
+  isNewCategory: boolean;
+  newCategoryName: string;
+}
+
 const Komoditas: React.FC = () => {
   const [searchCategory, setSearchCategory] = useState('');
   const [searchName, setSearchName] = useState('');
@@ -26,10 +32,14 @@ const Komoditas: React.FC = () => {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [submittingNew, setSubmittingNew] = useState(false);
-  const [newItemForm, setNewItemForm] = useState<NewKomoditasForm>({
-    device_category: '',
-    device_name: '',
-    quantity: 1
+  const [newItemState, setNewItemState] = useState<NewItemState>({
+    form: {
+      device_category: '',
+      device_name: '',
+      quantity: 1
+    },
+    isNewCategory: false,
+    newCategoryName: ''
   });
 
   // Fetch komoditas data from API
@@ -65,37 +75,78 @@ const Komoditas: React.FC = () => {
   }, [fetchKomoditasData]);
 
   const handleOpenModal = () => {
-    setNewItemForm({
-      device_category: '',
-      device_name: '',
-      quantity: 1
+    setNewItemState({
+      form: {
+        device_category: '',
+        device_name: '',
+        quantity: 1
+      },
+      isNewCategory: false,
+      newCategoryName: ''
     });
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setNewItemForm({
-      device_category: '',
-      device_name: '',
-      quantity: 1
+    setNewItemState({
+      form: {
+        device_category: '',
+        device_name: '',
+        quantity: 1
+      },
+      isNewCategory: false,
+      newCategoryName: ''
     });
   };
 
   const handleFormChange = (field: keyof NewKomoditasForm, value: string | number) => {
-    setNewItemForm(prev => ({
+    if (field === 'device_category') {
+      if (value === 'new_category') {
+        setNewItemState(prev => ({
+          ...prev,
+          isNewCategory: true,
+          newCategoryName: ''
+        }));
+      } else {
+        setNewItemState(prev => ({
+          ...prev,
+          form: { ...prev.form, [field]: value as string },
+          isNewCategory: false,
+          newCategoryName: ''
+        }));
+      }
+    } else {
+      setNewItemState(prev => ({
+        ...prev,
+        form: { ...prev.form, [field]: value }
+      }));
+    }
+  };
+
+  const handleNewCategoryChange = (value: string) => {
+    setNewItemState(prev => ({
       ...prev,
-      [field]: value
+      newCategoryName: value,
+      form: { ...prev.form, device_category: value }
     }));
   };
 
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newItemForm.device_category || !newItemForm.device_name || newItemForm.quantity < 1) {
+    const finalCategory = newItemState.isNewCategory ? newItemState.newCategoryName : newItemState.form.device_category;
+    
+    if (!finalCategory || !newItemState.form.device_name || newItemState.form.quantity < 1) {
       setError('Please fill all fields with valid data');
       return;
     }
+
+    const submitData = {
+      device_category: finalCategory,
+      device_name: newItemState.form.device_name,
+      quantity: newItemState.form.quantity
+    };
 
     setSubmittingNew(true);
     setError('');
@@ -107,7 +158,7 @@ const Komoditas: React.FC = () => {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
-        body: JSON.stringify(newItemForm)
+        body: JSON.stringify(submitData)
       });
 
       if (response.ok) {
@@ -277,7 +328,7 @@ const Komoditas: React.FC = () => {
                 <label htmlFor="newCategory">Device Category:</label>
                 <select
                   id="newCategory"
-                  value={newItemForm.device_category}
+                  value={newItemState.isNewCategory ? 'new_category' : newItemState.form.device_category}
                   onChange={(e) => handleFormChange('device_category', e.target.value)}
                   required
                   disabled={submittingNew}
@@ -291,11 +342,12 @@ const Komoditas: React.FC = () => {
                   <option value="new_category">+ Add New Category</option>
                 </select>
                 
-                {newItemForm.device_category === 'new_category' && (
+                {newItemState.isNewCategory && (
                   <input
                     type="text"
                     placeholder="Enter new category name..."
-                    onChange={(e) => handleFormChange('device_category', e.target.value)}
+                    value={newItemState.newCategoryName}
+                    onChange={(e) => handleNewCategoryChange(e.target.value)}
                     className="new-category-input"
                     required
                     disabled={submittingNew}
@@ -309,7 +361,7 @@ const Komoditas: React.FC = () => {
                   type="text"
                   id="newDeviceName"
                   placeholder="Enter device name..."
-                  value={newItemForm.device_name}
+                  value={newItemState.form.device_name}
                   onChange={(e) => handleFormChange('device_name', e.target.value)}
                   required
                   disabled={submittingNew}
@@ -322,7 +374,7 @@ const Komoditas: React.FC = () => {
                   type="number"
                   id="newQuantity"
                   min="1"
-                  value={newItemForm.quantity}
+                  value={newItemState.form.quantity}
                   onChange={(e) => handleFormChange('quantity', parseInt(e.target.value) || 1)}
                   required
                   disabled={submittingNew}
