@@ -39,6 +39,7 @@ const Pengembalian: React.FC = () => {
   const [selectedLoan, setSelectedLoan] = useState<PeminjamanData | null>(null);
   const [returnDevices, setReturnDevices] = useState<ReturnDeviceItem[]>([]);
   const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
 
   useEffect(() => {
     fetchPeminjamanData();
@@ -96,7 +97,18 @@ const Pengembalian: React.FC = () => {
       return;
     }
 
+    // Show confirmation dialog (don't set loading here)
+    setShowConfirmationDialog(true);
+  };
+
+  const handleConfirmedReturn = async () => {
+    if (!selectedLoan) return;
+
+    const devicesToReturn = returnDevices.filter(device => device.returnedCount > 0);
+    
     setSubmittingReturn(true);
+    setShowConfirmationDialog(false);
+    
     try {
       const response = await fetch(API_ENDPOINTS.peminjamanReturn(selectedLoan.id), {
         method: 'PATCH',
@@ -115,14 +127,21 @@ const Pengembalian: React.FC = () => {
         setShowReturnModal(false);
         setSelectedLoan(null);
         setReturnDevices([]);
+        setError(''); // Clear any previous errors
       } else {
-        setError('Failed to process return');
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to process return');
       }
     } catch (error) {
       setError('Error processing return');
     } finally {
       setSubmittingReturn(false);
     }
+  };
+
+  const handleCancelConfirmation = () => {
+    setShowConfirmationDialog(false);
+    setSubmittingReturn(false); // Ensure loading state is reset
   };
 
   const closeReturnModal = () => {
@@ -388,6 +407,105 @@ const Pengembalian: React.FC = () => {
                 disabled={submittingReturn}
               >
                 {submittingReturn ? 'Memproses...' : 'Submit Pengembalian'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog */}
+      {showConfirmationDialog && selectedLoan && (
+        <div className="confirmation-overlay">
+          <div className="confirmation-modal">
+            <div className="confirmation-header">
+              <h3>Konfirmasi Pengembalian Alat</h3>
+            </div>
+            
+            <div className="confirmation-body">
+              <p className="confirmation-intro">
+                Mohon periksa kembali data pengembalian berikut:
+              </p>
+              
+              <div className="confirmation-section">
+                <h4>Informasi Peminjaman</h4>
+                <div className="confirmation-row">
+                  <span className="label">Nama Peminjam:</span>
+                  <span className="value">{selectedLoan.nama_peminjam}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Tanggal Peminjaman:</span>
+                  <span className="value">{selectedLoan.tanggal_peminjaman}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Nama Program:</span>
+                  <span className="value">{selectedLoan.nama_program}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Rencana Pengembalian:</span>
+                  <span className="value">{selectedLoan.rencana_pengembalian}</span>
+                </div>
+                <div className="confirmation-row">
+                  <span className="label">Nama Operator:</span>
+                  <span className="value">{selectedLoan.nama_operator}</span>
+                </div>
+              </div>
+
+              <div className="confirmation-section">
+                <h4>Alat yang Akan Dikembalikan</h4>
+                {returnDevices
+                  .filter(device => device.returnedCount > 0)
+                  .map((device, index) => (
+                  <div key={`${device.kategoriAlat}-${device.namaAlat}-${index}`} className="device-summary">
+                    <div className="device-header">
+                      <strong>Alat {index + 1}</strong>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Kategori:</span>
+                      <span className="value">{device.kategoriAlat}</span>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Nama Alat:</span>
+                      <span className="value">{device.namaAlat}</span>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Jumlah Dipinjam:</span>
+                      <span className="value">{device.originalCount} unit</span>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Jumlah Dikembalikan:</span>
+                      <span className="value">{device.returnedCount} unit</span>
+                    </div>
+                    <div className="confirmation-row">
+                      <span className="label">Kondisi:</span>
+                      <span className="value">{device.kondisi}</span>
+                    </div>
+                    {device.originalCount > device.returnedCount && (
+                      <div className="confirmation-row">
+                        <span className="label">Sisa Belum Dikembalikan:</span>
+                        <span className="value warning">{device.originalCount - device.returnedCount} unit</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="confirmation-footer">
+              <button 
+                type="button" 
+                onClick={handleCancelConfirmation}
+                className="cancel-button"
+                disabled={submittingReturn}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleConfirmedReturn}
+                className="confirm-button"
+                disabled={submittingReturn}
+              >
+                {submittingReturn ? 'Memproses...' : 'OK - Kembalikan'}
               </button>
             </div>
           </div>
