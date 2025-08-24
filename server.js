@@ -132,6 +132,123 @@ db.serialize(() => {
   });
 });
 
+// Helper functions for quantity synchronization
+const updateKomoditasQuantities = (deviceName, deviceCategory, quantityChange, isLoan = true, callback) => {
+  // Find the item in komoditas
+  db.get(
+    'SELECT * FROM komoditas WHERE LOWER(device_name) = LOWER(?) AND LOWER(device_category) = LOWER(?)',
+    [deviceName, deviceCategory],
+    (err, item) => {
+      if (err) {
+        return callback(err);
+      }
+      
+      if (!item) {
+        return callback(new Error(`Item not found: ${deviceName} in category ${deviceCategory}`));
+      }
+      
+      let newAvailableQuantity, newLoanedQuantity;
+      
+      if (isLoan) {
+        // Creating a loan - decrease available, increase loaned
+        newAvailableQuantity = item.available_quantity - quantityChange;
+        newLoanedQuantity = item.loaned_quantity + quantityChange;
+        
+        // Validation: check if we have enough available quantity
+        if (newAvailableQuantity < 0) {
+          return callback(new Error(`Insufficient quantity available for ${deviceName}. Available: ${item.available_quantity}, Requested: ${quantityChange}`));
+        }
+      } else {
+        // Processing a return - increase available, decrease loaned
+        newAvailableQuantity = item.available_quantity + quantityChange;
+        newLoanedQuantity = item.loaned_quantity - quantityChange;
+        
+        // Validation: check if we're not returning more than loaned
+        if (newLoanedQuantity < 0) {
+          return callback(new Error(`Cannot return more than loaned for ${deviceName}. Loaned: ${item.loaned_quantity}, Returning: ${quantityChange}`));
+        }
+      }
+      
+      // Update the quantities
+      db.run(
+        'UPDATE komoditas SET available_quantity = ?, loaned_quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [newAvailableQuantity, newLoanedQuantity, item.id],
+        function(err) {
+          if (err) {
+            return callback(err);
+          }
+          callback(null, {
+            id: item.id,
+            device_name: item.device_name,
+            device_category: item.device_category,
+            old_available: item.available_quantity,
+            new_available: newAvailableQuantity,
+            old_loaned: item.loaned_quantity,
+            new_loaned: newLoanedQuantity,
+            total_quantity: item.total_quantity
+          });
+        }
+      );
+    }
+  );
+};
+
+const processLoanQuantities = (alatYangDipinjam, callback) => {
+  const updates = [];
+  let completed = 0;
+  let hasError = false;
+  
+  if (!alatYangDipinjam || alatYangDipinjam.length === 0) {
+    return callback(null, updates);
+  }
+  
+  alatYangDipinjam.forEach((item, index) => {
+    if (hasError) return;
+    
+    updateKomoditasQuantities(item.namaAlat, item.kategoriAlat, item.jumlah, true, (err, result) => {
+      if (err) {
+        hasError = true;
+        return callback(err);
+      }
+      
+      updates.push(result);
+      completed++;
+      
+      if (completed === alatYangDipinjam.length) {
+        callback(null, updates);
+      }
+    });
+  });
+};
+
+const processReturnQuantities = (returnedDevices, callback) => {
+  const updates = [];
+  let completed = 0;
+  let hasError = false;
+  
+  if (!returnedDevices || returnedDevices.length === 0) {
+    return callback(null, updates);
+  }
+  
+  returnedDevices.forEach((device, index) => {
+    if (hasError) return;
+    
+    updateKomoditasQuantities(device.namaAlat, device.kategoriAlat, device.returnedCount, false, (err, result) => {
+      if (err) {
+        hasError = true;
+        return callback(err);
+      }
+      
+      updates.push(result);
+      completed++;
+      
+      if (completed === returnedDevices.length) {
+        callback(null, updates);
+      }
+    });
+  });
+};
+
 const authenticateToken = (req, res, next) => {
   // Try to get token from cookie first, then from Authorization header
   let token = req.cookies.authToken;
@@ -328,19 +445,38 @@ app.post('/api/peminjaman', authenticateToken, (req, res) => {
   const { namaPeminjam, tanggalPeminjaman, namaProgram, rencanaPengembalian, alatYangDipinjam, namaOperator } = req.body;
   const user_id = req.user.id;
 
-  db.run(
-    'INSERT INTO peminjaman (nama_peminjam, tanggal_peminjaman, nama_program, rencana_pengembalian, alat_yang_dipinjam, remaining_items, nama_operator, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [namaPeminjam, tanggalPeminjaman, namaProgram, rencanaPengembalian, JSON.stringify(alatYangDipinjam), JSON.stringify(alatYangDipinjam), namaOperator, user_id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
-      res.json({ 
-        id: this.lastID, 
-        message: 'Peminjaman record created successfully' 
+  // First, validate and update quantities in komoditas
+  processLoanQuantities(alatYangDipinjam, (err, quantityUpdates) => {
+    if (err) {
+      return res.status(400).json({ 
+        error: 'Quantity validation failed', 
+        details: err.message 
       });
     }
-  );
+
+    // If quantity validation passes, create the loan record
+    db.run(
+      'INSERT INTO peminjaman (nama_peminjam, tanggal_peminjaman, nama_program, rencana_pengembalian, alat_yang_dipinjam, remaining_items, nama_operator, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [namaPeminjam, tanggalPeminjaman, namaProgram, rencanaPengembalian, JSON.stringify(alatYangDipinjam), JSON.stringify(alatYangDipinjam), namaOperator, user_id],
+      function(err) {
+        if (err) {
+          // If loan creation fails, we need to rollback the quantity changes
+          // For now, we'll return an error and log the issue
+          console.error('Failed to create loan after quantity updates:', err);
+          return res.status(500).json({ 
+            error: 'Database error during loan creation',
+            warning: 'Quantities may have been updated but loan was not created. Please check inventory.'
+          });
+        }
+        
+        res.json({ 
+          id: this.lastID, 
+          message: 'Peminjaman record created successfully',
+          quantityUpdates: quantityUpdates
+        });
+      }
+    );
+  });
 });
 
 app.get('/api/peminjaman', authenticateToken, (req, res) => {
@@ -419,25 +555,40 @@ app.patch('/api/peminjaman/:id/return', authenticateToken, (req, res) => {
     // Determine status based on remaining items and partial return detection
     const status = newRemainingItems.length === 0 ? 'returned' : 'partial_return';
     
-    // Store return details
-    const returnDetails = returnedDevices ? JSON.stringify(returnedDevices) : null;
-    const remainingItemsJson = JSON.stringify(newRemainingItems);
-    
-    db.run(
-      'UPDATE peminjaman SET status = ?, remaining_items = ?, return_details = ?, returned_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [status, remainingItemsJson, returnDetails, id],
-      function(err) {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
-        res.json({ 
-          message: status === 'returned' ? 'Peminjaman returned completely' : 'Partial return processed successfully',
-          returnDetails: returnedDevices,
-          remainingItems: newRemainingItems,
-          status: status
+    // Process return quantities in komoditas before updating loan record
+    processReturnQuantities(returnedDevices, (err, quantityUpdates) => {
+      if (err) {
+        return res.status(400).json({ 
+          error: 'Return quantity validation failed', 
+          details: err.message 
         });
       }
-    );
+
+      // Store return details
+      const returnDetails = returnedDevices ? JSON.stringify(returnedDevices) : null;
+      const remainingItemsJson = JSON.stringify(newRemainingItems);
+      
+      db.run(
+        'UPDATE peminjaman SET status = ?, remaining_items = ?, return_details = ?, returned_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [status, remainingItemsJson, returnDetails, id],
+        function(err) {
+          if (err) {
+            console.error('Failed to update loan after quantity updates:', err);
+            return res.status(500).json({ 
+              error: 'Database error during return update',
+              warning: 'Quantities may have been updated but loan status was not updated. Please check records.'
+            });
+          }
+          res.json({ 
+            message: status === 'returned' ? 'Peminjaman returned completely' : 'Partial return processed successfully',
+            returnDetails: returnedDevices,
+            remainingItems: newRemainingItems,
+            status: status,
+            quantityUpdates: quantityUpdates
+          });
+        }
+      );
+    });
   });
 });
 
