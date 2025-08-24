@@ -22,6 +22,10 @@ interface NewItemState {
   form: NewKomoditasForm;
   isNewCategory: boolean;
   newCategoryName: string;
+  isNewDeviceName: boolean;
+  newDeviceName: string;
+  deviceNameSearch: string;
+  filteredDeviceNames: string[];
 }
 
 const Komoditas: React.FC = () => {
@@ -39,7 +43,11 @@ const Komoditas: React.FC = () => {
       quantity: 1
     },
     isNewCategory: false,
-    newCategoryName: ''
+    newCategoryName: '',
+    isNewDeviceName: false,
+    newDeviceName: '',
+    deviceNameSearch: '',
+    filteredDeviceNames: []
   });
 
   // Fetch komoditas data from API
@@ -82,7 +90,11 @@ const Komoditas: React.FC = () => {
         quantity: 1
       },
       isNewCategory: false,
-      newCategoryName: ''
+      newCategoryName: '',
+      isNewDeviceName: false,
+      newDeviceName: '',
+      deviceNameSearch: '',
+      filteredDeviceNames: []
     });
     setShowModal(true);
   };
@@ -96,7 +108,11 @@ const Komoditas: React.FC = () => {
         quantity: 1
       },
       isNewCategory: false,
-      newCategoryName: ''
+      newCategoryName: '',
+      isNewDeviceName: false,
+      newDeviceName: '',
+      deviceNameSearch: '',
+      filteredDeviceNames: []
     });
   };
 
@@ -106,21 +122,54 @@ const Komoditas: React.FC = () => {
         setNewItemState(prev => ({
           ...prev,
           isNewCategory: true,
-          newCategoryName: ''
+          newCategoryName: '',
+          form: { ...prev.form, device_name: '' },
+          isNewDeviceName: false,
+          newDeviceName: '',
+          deviceNameSearch: '',
+          filteredDeviceNames: []
+        }));
+      } else {
+        const categoryValue = value as string;
+        const availableDeviceNames = getDeviceNamesByCategory(categoryValue);
+        setNewItemState(prev => ({
+          ...prev,
+          form: { ...prev.form, [field]: categoryValue, device_name: '' },
+          isNewCategory: false,
+          newCategoryName: '',
+          isNewDeviceName: false,
+          newDeviceName: '',
+          deviceNameSearch: '',
+          filteredDeviceNames: availableDeviceNames
+        }));
+      }
+    } else if (field === 'device_name') {
+      if (value === 'new_device_name') {
+        setNewItemState(prev => ({
+          ...prev,
+          isNewDeviceName: true,
+          newDeviceName: ''
         }));
       } else {
         setNewItemState(prev => ({
           ...prev,
           form: { ...prev.form, [field]: value as string },
-          isNewCategory: false,
-          newCategoryName: ''
+          isNewDeviceName: false,
+          newDeviceName: ''
         }));
       }
     } else {
-      setNewItemState(prev => ({
-        ...prev,
-        form: { ...prev.form, [field]: value }
-      }));
+      if (field === 'quantity') {
+        setNewItemState(prev => ({
+          ...prev,
+          form: { ...prev.form, quantity: value as number }
+        }));
+      } else {
+        setNewItemState(prev => ({
+          ...prev,
+          form: { ...prev.form, [field]: value as string }
+        }));
+      }
     }
   };
 
@@ -132,19 +181,47 @@ const Komoditas: React.FC = () => {
     }));
   };
 
+  const handleNewDeviceNameChange = (value: string) => {
+    setNewItemState(prev => ({
+      ...prev,
+      newDeviceName: value,
+      form: { ...prev.form, device_name: value }
+    }));
+  };
+
+  const handleDeviceNameSearch = (searchTerm: string) => {
+    const currentCategory = newItemState.isNewCategory ? newItemState.newCategoryName : newItemState.form.device_category;
+    if (!currentCategory) return;
+    
+    const availableDeviceNames = getDeviceNamesByCategory(currentCategory);
+    const filtered = filterDeviceNames(availableDeviceNames, searchTerm);
+    
+    setNewItemState(prev => ({
+      ...prev,
+      deviceNameSearch: searchTerm,
+      filteredDeviceNames: filtered
+    }));
+  };
+
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const finalCategory = newItemState.isNewCategory ? newItemState.newCategoryName : newItemState.form.device_category;
+    let finalDeviceName = newItemState.isNewDeviceName ? newItemState.newDeviceName : newItemState.form.device_name;
     
-    if (!finalCategory || !newItemState.form.device_name || newItemState.form.quantity < 1) {
+    // If no device name selected but there's a search term, use the search term as new device name
+    if (!finalDeviceName && newItemState.deviceNameSearch) {
+      finalDeviceName = newItemState.deviceNameSearch;
+    }
+    
+    if (!finalCategory || !finalDeviceName || newItemState.form.quantity < 1) {
       setError('Please fill all fields with valid data');
       return;
     }
 
     const submitData = {
       device_category: finalCategory,
-      device_name: newItemState.form.device_name,
+      device_name: finalDeviceName,
       quantity: newItemState.form.quantity
     };
 
@@ -180,6 +257,21 @@ const Komoditas: React.FC = () => {
   const getUniqueCategories = () => {
     const categories = komoditasData.map(item => item.device_category);
     return Array.from(new Set(categories));
+  };
+
+  const getDeviceNamesByCategory = (category: string) => {
+    if (!category || category === 'new_category') return [];
+    const deviceNames = komoditasData
+      .filter(item => item.device_category.toLowerCase() === category.toLowerCase())
+      .map(item => item.device_name);
+    return Array.from(new Set(deviceNames));
+  };
+
+  const filterDeviceNames = (deviceNames: string[], searchTerm: string) => {
+    if (!searchTerm) return deviceNames;
+    return deviceNames.filter(name => 
+      name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
   };
 
   // Debounced search effect
@@ -357,15 +449,72 @@ const Komoditas: React.FC = () => {
 
               <div className="form-group">
                 <label htmlFor="newDeviceName">Device Name:</label>
-                <input
-                  type="text"
-                  id="newDeviceName"
-                  placeholder="Enter device name..."
-                  value={newItemState.form.device_name}
-                  onChange={(e) => handleFormChange('device_name', e.target.value)}
-                  required
-                  disabled={submittingNew}
-                />
+                
+                {/* Show device name selection only if category is selected */}
+                {((newItemState.form.device_category && !newItemState.isNewCategory) || (newItemState.isNewCategory && newItemState.newCategoryName)) && (
+                  <>
+                    {/* Search/Filter input for device names */}
+                    <input
+                      type="text"
+                      placeholder="Search device names or type new name..."
+                      value={newItemState.deviceNameSearch}
+                      onChange={(e) => handleDeviceNameSearch(e.target.value)}
+                      className="device-search-input"
+                      disabled={submittingNew}
+                    />
+                    
+                    {/* Device name dropdown with filtered options */}
+                    {newItemState.filteredDeviceNames.length > 0 && (
+                      <select
+                        id="deviceNameSelect"
+                        value={newItemState.isNewDeviceName ? 'new_device_name' : newItemState.form.device_name}
+                        onChange={(e) => handleFormChange('device_name', e.target.value)}
+                        required
+                        disabled={submittingNew}
+                        className="device-name-select"
+                      >
+                        <option value="">Select Device Name</option>
+                        {newItemState.filteredDeviceNames.map((deviceName) => (
+                          <option key={deviceName} value={deviceName}>
+                            {deviceName}
+                          </option>
+                        ))}
+                        <option value="new_device_name">+ Add New Device Name</option>
+                      </select>
+                    )}
+                    
+                    {/* Show add new device name input */}
+                    {newItemState.isNewDeviceName && (
+                      <input
+                        type="text"
+                        placeholder="Enter new device name..."
+                        value={newItemState.newDeviceName}
+                        onChange={(e) => handleNewDeviceNameChange(e.target.value)}
+                        className="new-device-input"
+                        required
+                        disabled={submittingNew}
+                      />
+                    )}
+                    
+                    {/* Show message when no devices found in search */}
+                    {newItemState.deviceNameSearch && newItemState.filteredDeviceNames.length === 0 && !newItemState.isNewDeviceName && (
+                      <div className="no-devices-message">
+                        No existing devices found. The search term will be used as new device name.
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {/* Show disabled input if no category selected */}
+                {!newItemState.form.device_category && !newItemState.isNewCategory && (
+                  <input
+                    type="text"
+                    id="newDeviceName"
+                    placeholder="Select a category first..."
+                    disabled={true}
+                    className="disabled-input"
+                  />
+                )}
               </div>
 
               <div className="form-group">

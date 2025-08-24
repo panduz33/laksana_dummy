@@ -315,6 +315,35 @@
   margin-top: 0.75rem;
 }
 
+/* Device Name Selection Styles */
+.device-search-input {
+  margin-bottom: 0.75rem;
+}
+
+.device-name-select {
+  margin-bottom: 0.75rem;
+}
+
+.new-device-input {
+  margin-top: 0.75rem;
+}
+
+.disabled-input {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  cursor: not-allowed !important;
+}
+
+.no-devices-message {
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 0.5rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  border: 1px solid #dee2e6;
+}
+
 .modal-footer {
   display: flex;
   gap: 1rem;
