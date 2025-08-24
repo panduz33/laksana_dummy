@@ -122,13 +122,11 @@ const Peminjaman: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setMessage('');
 
     // Basic validation
     if (!formData.namaPeminjam || !formData.namaProgram || !formData.rencanaPengembalian) {
       setMessage('Please fill in all required fields');
-      setLoading(false);
       return;
     }
 
@@ -139,11 +137,10 @@ const Peminjaman: React.FC = () => {
 
     if (invalidDevices.length > 0) {
       setMessage('Please complete all device information');
-      setLoading(false);
       return;
     }
 
-    // Show confirmation dialog
+    // Show confirmation dialog (don't set loading here)
     setShowConfirmationDialog(true);
   };
 
@@ -184,6 +181,7 @@ const Peminjaman: React.FC = () => {
 
   const handleCancelConfirmation = () => {
     setShowConfirmationDialog(false);
+    setLoading(false); // Ensure loading state is reset
   };
 
   return (
