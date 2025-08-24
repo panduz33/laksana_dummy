@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../../config/api';
 import { useAuth } from '../../context/AuthContext';
 import Layout from '../Layout';
 import '../../styles/Peminjaman.css';
@@ -56,7 +57,7 @@ const Peminjaman: React.FC = () => {
 
   const fetchKomoditasOptions = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/komoditas', {
+      const response = await fetch(API_ENDPOINTS.komoditas, {
         credentials: 'include'
       });
 
@@ -142,7 +143,7 @@ const Peminjaman: React.FC = () => {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/peminjaman', {
+      const response = await fetch(API_ENDPOINTS.peminjaman, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

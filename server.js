@@ -5,20 +5,60 @@ const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = 'your-secret-key-here';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-here';
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
 app.use(cors({
-  origin: 'https://laksana-dummy.vercel.app',
+  origin: NODE_ENV === 'production' 
+    ? ['https://laksana-dummy.vercel.app', 'https://laksana-dummy.vercel.app']
+    : ['http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
-const dbPath = path.join(__dirname, 'database.db');
-const db = new sqlite3.Database(dbPath);
+// Configure database path for Railway deployment
+let dbPath;
+if (process.env.DATABASE_PATH) {
+  // Railway production environment with volume
+  dbPath = process.env.DATABASE_PATH;
+} else if (NODE_ENV === 'production') {
+  // Railway production environment without volume
+  dbPath = path.join(__dirname, 'data', 'database.db');
+} else {
+  // Local development - try data folder first, then root
+  const dataPath = path.join(__dirname, 'data', 'database.db');
+  const rootPath = path.join(__dirname, 'database.db');
+  
+  if (fs.existsSync(dataPath)) {
+    dbPath = dataPath;
+  } else if (fs.existsSync(rootPath)) {
+    dbPath = rootPath;
+  } else {
+    // Default to data folder for new installations
+    dbPath = dataPath;
+  }
+}
+console.log('Database path:', dbPath);
+console.log('Environment:', NODE_ENV);
+
+// Ensure database directory exists
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err.message);
+  } else {
+    console.log('Connected to SQLite database at:', dbPath);
+  }
+});
 
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -401,6 +441,48 @@ app.patch('/api/peminjaman/:id/return', authenticateToken, (req, res) => {
   });
 });
 
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
+    if (err) {
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'Database connection failed',
+        error: err.message 
+      });
+    } else {
+      res.json({ 
+        status: 'healthy', 
+        database: 'connected',
+        userCount: row.count,
+        timestamp: new Date().toISOString(),
+        environment: NODE_ENV,
+        databasePath: dbPath
+      });
+    }
+  });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Device Loan Management API',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      login: '/api/login',
+      logout: '/api/logout',
+      authStatus: '/api/auth/status',
+      komoditas: '/api/komoditas',
+      peminjaman: '/api/peminjaman'
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  console.log(`Environment: ${NODE_ENV}`);
+  console.log(`Database: ${dbPath}`);
+  console.log(`Health check available at: http://localhost:${PORT}/health`);
 });

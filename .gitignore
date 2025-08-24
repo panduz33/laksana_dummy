@@ -11,13 +11,41 @@
 # production
 /build
 
+# database files
+database.db
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# session continuation files
+*-this-session-is-being-continued-from-a-previous-co.txt
+
+# cookies and auth files
+cookies.txt
+*.cookie
+
 # misc
 .DS_Store
+.env
 .env.local
+.env.development
 .env.development.local
 .env.test.local
+.env.production
 .env.production.local
 
+# logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+Thumbs.db

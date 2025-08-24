@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../../config/api';
 import Layout from '../Layout';
 import '../../styles/Pengembalian.css';
 
@@ -45,7 +46,7 @@ const Pengembalian: React.FC = () => {
 
   const fetchPeminjamanData = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/peminjaman', {
+      const response = await fetch(API_ENDPOINTS.peminjaman, {
         credentials: 'include'
       });
 

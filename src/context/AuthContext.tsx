@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 
 interface User {
   id: number;
@@ -35,7 +36,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = useCallback(async () => {
     try {
       // Call server logout endpoint to clear cookie
-      await fetch('http://localhost:5000/api/logout', {
+      await fetch(API_ENDPOINTS.logout, {
         method: 'POST',
         credentials: 'include'
       });
@@ -60,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token && userData) {
         try {
           // Verify the session is still valid using dedicated auth status endpoint
-          const response = await fetch('https://laksana-dummy.vercel.app/api/auth/status', {
+          const response = await fetch(API_ENDPOINTS.authStatus, {
             credentials: 'include'
           });
           
@@ -92,7 +93,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch('https://laksana-dummy.vercel.app/api/login', {
+      const response = await fetch(API_ENDPOINTS.login, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../Layout';
+import { API_ENDPOINTS } from '../../config/api';
 import '../../styles/Komoditas.css';
 
 interface KomoditasData {
@@ -32,14 +33,14 @@ const Komoditas: React.FC = () => {
   });
 
   // Fetch komoditas data from API
-  const fetchKomoditasData = async () => {
+  const fetchKomoditasData = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       
       if (searchCategory) params.append('category', searchCategory);
       if (searchName) params.append('name', searchName);
       
-      const url = `http://localhost:5000/api/komoditas${params.toString() ? '?' + params.toString() : ''}`;
+      const url = `${API_ENDPOINTS.komoditas}${params.toString() ? '?' + params.toString() : ''}`;
       
       const response = await fetch(url, {
         credentials: 'include'
@@ -57,11 +58,11 @@ const Komoditas: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchCategory, searchName]);
 
   useEffect(() => {
     fetchKomoditasData();
-  }, []);
+  }, [fetchKomoditasData]);
 
   const handleOpenModal = () => {
     setNewItemForm({
@@ -100,7 +101,7 @@ const Komoditas: React.FC = () => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/komoditas', {
+      const response = await fetch(API_ENDPOINTS.komoditas, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -137,7 +138,7 @@ const Komoditas: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchCategory, searchName]);
+  }, [fetchKomoditasData]);
 
   if (loading) {
     return (

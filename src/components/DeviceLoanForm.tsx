@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 import '../styles/DeviceLoanForm.css';
 
 interface DeviceLoan {
@@ -32,7 +33,7 @@ const DeviceLoanForm: React.FC = () => {
     setMessage('');
 
     try {
-      const response = await fetch('http://localhost:5000/api/device-loans', {
+      const response = await fetch(API_ENDPOINTS.deviceLoans, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
