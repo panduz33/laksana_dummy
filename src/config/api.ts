@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://sqlite3-production-f657.up.railway.app';
+console.log('API_BASE_URL:', API_BASE_URL); // Debug log
 
 export const API_ENDPOINTS = {
   login: `${API_BASE_URL}/api/login`,
