@@ -180,7 +180,7 @@ app.post('/api/login', (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 2 * 60 * 60 * 1000, // 2 hours in milliseconds
-      sameSite: 'lax'
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     });
 
     res.json({ 
